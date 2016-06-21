@@ -1,10 +1,10 @@
 ;;; soarers-converter-mode.el --- A major emacs mode for editing soarer's converter config files -*-lexical-binding: t-*-
 
-;; Version: 0.1.0
-;; Author: Ocodo <what.is.ocodo@gmail.com>
-;; Url: https://github.com/ocodo/soarers-converter-mode
+;; Version: 0.2.0
+;; Author: Jason Milkins <jasonm23@gmail.com>
+;; Url: https://github.com/jasonm23/soarers-converter-mode
 ;; Keywords: keyboard firmware configuration soarer's converter
-;; Package-Requires: ((emacs "24.0"))
+;; Package-Requires: ((emacs "24.0") (el-indent "0.2.0"))
 
 ;; This file is distributed under the terms of the MIT license
 
@@ -12,35 +12,9 @@
 ;;  A mode for editing soarer's converter config files
 
 ;;; Code:
+(require 'el-indent)
+
 (eval-when-compile (require 'cl-lib))
-
-(defun sc--looking-back-at (&rest word-list)
-  (save-excursion
-    (forward-line -1)
-    (apply 'sc-looking-at word-list)))
-
-(defun sc--looking-at (&rest word-list)
-  (looking-at
-   (concat
-    "^[ \t]*"
-    (regexp-opt word-list))))
-
-(defun* sc--indent-line ()
-  "Indent current line as soarers converter code"
-  (beginning-of-line)
-  (when (sc--looking-at "layerblock" "macroblock" "remapblock")
-    (setq-local sc--current-indent sc--offset)
-    (indent-line-to 0)
-    (return-from sc--indent-line))
-  (when (sc--looking-at "macro")
-    (setq-local sc--current-indent (* 2 sc--offset))
-    (indent-line-to sc--offset)
-    (return-from sc--indent-line))
-  (when (sc--looking-at "endmacro") (setq-local sc--current-indent sc--offset))
-  (when (sc--looking-at "endblock") (setq-local sc--current-indent 0))
-  (if sc--current-indent
-      (indent-line-to sc--current-indent)
-    (indent-line-to 0)))
 
 (defvar sc--syntax-table
   (let ((st (make-syntax-table)))
@@ -78,6 +52,7 @@ endblock
 remapblock
 layer 1
 Z 1
+# Hello there
 X 2
 C 3
 endblock
@@ -103,6 +78,7 @@ endblock
 remapblock
   layer 1
   Z 1
+  # Hello there
   X 2
   C 3
 endblock
@@ -450,18 +426,29 @@ endblock
      (,(regexp-opt soarers-converter-commands       'words) . font-lock-keyword-face)
      )))
 
+(setq el-indent-exp-sc-mode
+      (el-indent-build-exps
+       (list
+        (list "layerblock\\|macroblock\\|remapblock\\|macro" "endblock\\|endmacro")
+        (list 1    -1)
+        (list t    t))))
+
+;; el-indent-build-exps translates your rules into expressions that
+;; are evaluated when actually indenting.
+
+(defun el-indent-sc-mode ()
+  (el-indent-line (lambda () el-indent-exp-sc-mode)))
+
 ;;;###autoload
 (define-derived-mode soarers-converter-mode
   fundamental-mode
   "Soarers Converter"
   "Major mode for editing soarers converter configuration files"
   :syntax-table sc--syntax-table
-  (setq-local sc--current-indent 0)
-  (setq-local sc--offset 2)
   (setq-local comment-start "# ")
   (setq-local comment-end "")
   (setq-local comment-multi-line nil)
-  (setq-local indent-line-function #'sc--indent-line)
+  (setq-local indent-line-function #'el-indent-sc-mode)
   (setq-local font-lock-defaults soarers-converter-font-lock-defaults))
 
 ;;;###autoload
