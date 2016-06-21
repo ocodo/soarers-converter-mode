@@ -10,4 +10,10 @@ It runs on Teensy 2.0 (and some other controllers.)  It also supports configurat
 
 For more info and to download the converter, tools and docs see [this post by Soarer][1].
 
+#### Indentation rules
+
+Indentation is based on blocks and macros, e.g.
+
+![](http://i.imgur.com/Cd6G7qz.png)
+
 [1]: https://deskthority.net/workshop-f7/xt-at-ps2-terminal-to-usb-converter-with-nkro-t2510.html
