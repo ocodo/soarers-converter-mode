@@ -1,6 +1,6 @@
 ;;; soarers-converter-mode.el --- A major emacs mode for editing soarer's converter config files -*-lexical-binding: t-*-
 
-;; Version: 0.2.0
+;; Version: 0.2.2
 ;; Author: Jason Milkins <jasonm23@gmail.com>
 ;; Url: https://github.com/jasonm23/soarers-converter-mode
 ;; Keywords: keyboard firmware configuration soarer's converter
@@ -92,7 +92,11 @@ endblock
 
 (defvar soarers-converter-mode-hook nil)
 
-(defvar soarers-converter-mode-map nil)
+(defvar soarers-converter-blocks
+  '(("remapblock" . "endblock")
+    ("layerblock" . "endblock")
+    ("macroblock" . "endblock")
+    ("macro"      . "endmacro")))
 
 (defvar soarers-converter-commands
   '("include"
@@ -417,6 +421,62 @@ endblock
   (interactive)
   (insert (completing-read "HID code: " soarers-converter-hid-codes)))
 
+(defun soarers-converter-insert-command ()
+  "Completing read for commands."
+  (interactive)
+  (insert (completing-read "Command: " soarers-converter-commands)))
+
+(defun soarers-converter-insert-macro-command ()
+  "Completing read for macro commands."
+  (interactive)
+  (insert (completing-read "Macro Command: " soarers-converter-macro-commands)))
+
+(defun soarers-converter-insert-block ()
+  "Completing read to insert block."
+  (interactive)
+  (let ((starting-with
+         (completing-read "Block: "
+                          (mapcar
+                           (lambda (c) (car c))
+                           soarers-converter-blocks))))
+    (soarers-converter-insert-named-block starting-with)))
+
+(defun soarers-converter-insert-named-block (name)
+  "Insert a block with NAME."
+  (insert (format "%s" name))
+  (save-excursion
+    (newline-and-indent)
+    (insert (cdr (assoc name soarers-converter-blocks)))
+    (indent-for-tab-command))
+  (newline-and-indent))
+
+(defvar soarers-converter-mode-map (make-sparse-keymap))
+(define-key soarers-converter-mode-map (kbd "C-c b") #'soarers-converter-insert-block)
+(define-key soarers-converter-mode-map (kbd "C-c r") #'soarers-converter-insert-remapblock)
+(define-key soarers-converter-mode-map (kbd "C-c l") #'soarers-converter-insert-layerblock)
+(define-key soarers-converter-mode-map (kbd "C-c m") #'soarers-converter-insert-macroblock)
+(define-key soarers-converter-mode-map (kbd "C-c n") #'soarers-converter-insert-macro)
+
+(defun soarers-converter-insert-remapblock ()
+  "Insert a remapblock."
+  (interactive)
+  (soarers-converter-insert-named-block "remapblock"))
+
+(defun soarers-converter-insert-layerblock ()
+  "Insert a layerblock."
+  (interactive)
+  (soarers-converter-insert-named-block "layerblock"))
+
+(defun soarers-converter-insert-macroblock ()
+  "Insert a macroblock."
+  (interactive)
+  (soarers-converter-insert-named-block "macroblock"))
+
+(defun soarers-converter-insert-macro ()
+  "Insert a macro."
+  (interactive)
+  (soarers-converter-insert-named-block "macro"))
+
 (defvar soarers-converter-font-lock-defaults
   `((
      (,(regexp-opt soarers-converter-hid-codes      'words) . font-lock-variable-name-face)
@@ -426,18 +486,16 @@ endblock
      (,(regexp-opt soarers-converter-commands       'words) . font-lock-keyword-face)
      )))
 
-(setq el-indent-exp-sc-mode
+(defvar sc--indent-exps
       (el-indent-build-exps
        (list
-        (list "layerblock\\|macroblock\\|remapblock\\|macro" "endblock\\|endmacro")
-        (list 1    -1)
-        (list t    t))))
+         (list "layerblock\\|macroblock\\|remapblock\\|macro" "endblock\\|endmacro")
+         (list 1 -1)
+         (list t t))))
 
-;; el-indent-build-exps translates your rules into expressions that
-;; are evaluated when actually indenting.
-
-(defun el-indent-sc-mode ()
-  (el-indent-line (lambda () el-indent-exp-sc-mode)))
+(defun sc--indent-line-function ()
+  "Indent line function for soarers-converter."
+  (el-indent-line (lambda () sc--indent-exps)))
 
 ;;;###autoload
 (define-derived-mode soarers-converter-mode
@@ -445,10 +503,11 @@ endblock
   "Soarers Converter"
   "Major mode for editing soarers converter configuration files"
   :syntax-table sc--syntax-table
+  (use-local-map soarers-converter-mode-map)
   (setq-local comment-start "# ")
   (setq-local comment-end "")
   (setq-local comment-multi-line nil)
-  (setq-local indent-line-function #'el-indent-sc-mode)
+  (setq-local indent-line-function #'sc--indent-line-function)
   (setq-local font-lock-defaults soarers-converter-font-lock-defaults))
 
 ;;;###autoload
